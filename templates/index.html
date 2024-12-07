@@ -20,12 +20,9 @@
             box-sizing: border-box;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-        h1, h2, h3 {
+        h1, h2 {
             color: #333;
             margin-bottom: 20px;
-        }
-        form {
-            margin-top: 20px;
         }
         .form-group {
             margin: 15px 0;
@@ -39,7 +36,8 @@
         }
         input[type="text"],
         input[type="number"],
-        input[type="file"] {
+        input[type="file"],
+        input[type="range"] {
             width: 100%;
             padding: 8px;
             font-size: 16px;
@@ -47,11 +45,11 @@
             border: 1px solid #ccc;
             border-radius: 4px;
         }
-        .slider-container {
-            margin: 15px 0;
-        }
-        .slider {
-            width: 100%;
+        .preview-image {
+            max-width: 200px;
+            max-height: 200px;
+            margin: 10px auto;
+            display: none;
         }
         button {
             margin-top: 20px;
@@ -70,28 +68,34 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
-            margin-top: 40px;
+            margin-top: 20px;
         }
         .result-card {
             border: 1px solid #ddd;
+            border-radius: 8px;
             padding: 10px;
-            border-radius: 4px;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .result-card img {
             width: 100%;
-            height: 150px;
+            height: 200px;
             object-fit: cover;
             border-radius: 4px;
+            margin-bottom: 10px;
         }
         .similarity-score {
-            margin-top: 10px;
-            font-weight: bold;
+            font-size: 14px;
+            color: #666;
+            text-align: center;
         }
-        .preview-image {
-            max-width: 200px;
-            max-height: 200px;
-            margin: 10px 0;
-            display: none;
+        .error-message {
+            color: red;
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid red;
+            border-radius: 4px;
+            background-color: #ffe6e6;
         }
     </style>
 </head>
@@ -103,7 +107,7 @@
             <!-- Text Query -->
             <div class="form-group">
                 <label for="text-query">Text Query:</label>
-                <input type="text" id="text-query" name="text-query" placeholder="Enter your search terms...">
+                <input type="text" id="text-query" name="text-query" placeholder="Enter search terms...">
             </div>
 
             <!-- Image Query -->
@@ -113,14 +117,19 @@
                 <img id="image-preview" class="preview-image" alt="Preview">
             </div>
 
-            <!-- Weight Slider (only shown when both queries are present) -->
-            <div class="form-group" id="weight-container" style="display: none;">
+            <!-- Weight Slider -->
+            <div class="form-group" id="weight-container">
                 <label for="weight">Text Query Weight (0.0 - 1.0):</label>
-                <input type="range" id="weight" name="weight" min="0" max="1" step="0.1" value="0.5" class="slider">
+                <input type="range" id="weight" name="weight" min="0" max="1" step="0.1" value="0.5">
                 <span id="weight-value">0.5</span>
             </div>
 
-            <!-- PCA Components -->
+            <!-- PCA Options -->
+            <div class="form-group">
+                <label for="use-pca">Use PCA for Image Query:</label>
+                <input type="checkbox" id="use-pca" name="use-pca" value="true">
+            </div>
+
             <div class="form-group">
                 <label for="pca-components">Number of PCA Components:</label>
                 <input type="number" id="pca-components" name="pca-components" min="1" max="10" value="5">
@@ -129,37 +138,40 @@
             <button type="submit">Search</button>
         </form>
 
-        <!-- Results Section -->
-        <div class="results-grid" id="results">
-            <!-- Results will be dynamically inserted here -->
+        {% if error %}
+        <div class="error-message">
+            {{ error }}
         </div>
-        <!-- Add this to your existing index.html, just before the closing </div> of the container -->
-{% if results %}
-<div class="results-section">
-    <h2>Search Results</h2>
-    {% if text_query %}
-        <p>Text Query: "{{ text_query }}"</p>
-    {% endif %}
-    {% if has_image_query %}
-        <p>Image Query: Included</p>
-    {% endif %}
-    {% if text_query and has_image_query %}
-        <p>Text Weight: {{ weight }}</p>
-    {% endif %}
-    <p>PCA Components: {{ pca_components }}</p>
-    
-    <div class="results-grid">
-        {% for result in results %}
-            <div class="result-card">
-                <img src="{{ result.image }}" alt="Search result" onerror="this.onerror=null; this.src='/static/placeholder.png';">
-                <div class="similarity-score">
-                    Similarity: {{ "%.3f"|format(result.score) }}
-                </div>
+        {% endif %}
+
+        {% if results %}
+        <div class="results-section">
+            <h2>Search Results</h2>
+            {% if text_query %}
+                <p>Text Query: "{{ text_query }}"</p>
+            {% endif %}
+            {% if has_image_query %}
+                <p>Image Query: Included</p>
+            {% endif %}
+            {% if weight %}
+                <p>Text Weight: {{ weight }}</p>
+            {% endif %}
+            {% if use_pca %}
+                <p>PCA Components: {{ pca_components }}</p>
+            {% endif %}
+            
+            <div class="results-grid">
+                {% for result in results %}
+                    <div class="result-card">
+                        <img src="{{ result.image }}" alt="Search result">
+                        <div class="similarity-score">
+                            Similarity: {{ "%.3f"|format(result.score) }}
+                        </div>
+                    </div>
+                {% endfor %}
             </div>
-        {% endfor %}
-    </div>
-</div>
-{% endif %}
+        </div>
+        {% endif %}
     </div>
 
     <script>
@@ -193,16 +205,8 @@
 
         document.getElementById('text-query').oninput = updateWeightVisibility;
 
-        // Example function to display results (to be implemented with backend)
-        function displayResults(results) {
-            const resultsContainer = document.getElementById('results');
-            resultsContainer.innerHTML = results.map(result => `
-                <div class="result-card">
-                    <img src="${result.image}" alt="Search result">
-                    <div class="similarity-score">Similarity: ${result.score.toFixed(3)}</div>
-                </div>
-            `).join('');
-        }
+        // Initial update
+        updateWeightVisibility();
     </script>
 </body>
 </html>
