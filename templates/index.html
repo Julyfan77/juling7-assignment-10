@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Image Search System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 800px;
+            max-width: 95%;
+            margin: 0 auto;
+            text-align: center;
+            background-color: #fff;
+            padding: 40px;
+            box-sizing: border-box;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2, h3 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        form {
+            margin-top: 20px;
+        }
+        .form-group {
+            margin: 15px 0;
+            text-align: left;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        input[type="text"],
+        input[type="number"],
+        input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .slider-container {
+            margin: 15px 0;
+        }
+        .slider {
+            width: 100%;
+        }
+        button {
+            margin-top: 20px;
+            padding: 12px 30px;
+            font-size: 16px;
+            background-color: #4285F4;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #3071E8;
+        }
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 40px;
+        }
+        .result-card {
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .result-card img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        .similarity-score {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .preview-image {
+            max-width: 200px;
+            max-height: 200px;
+            margin: 10px 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Image Search System</h1>
+
+        <form method="POST" action="/search" enctype="multipart/form-data">
+            <!-- Text Query -->
+            <div class="form-group">
+                <label for="text-query">Text Query:</label>
+                <input type="text" id="text-query" name="text-query" placeholder="Enter your search terms...">
+            </div>
+
+            <!-- Image Query -->
+            <div class="form-group">
+                <label for="image-query">Image Query:</label>
+                <input type="file" id="image-query" name="image-query" accept="image/*" onchange="previewImage(this)">
+                <img id="image-preview" class="preview-image" alt="Preview">
+            </div>
+
+            <!-- Weight Slider (only shown when both queries are present) -->
+            <div class="form-group" id="weight-container" style="display: none;">
+                <label for="weight">Text Query Weight (0.0 - 1.0):</label>
+                <input type="range" id="weight" name="weight" min="0" max="1" step="0.1" value="0.5" class="slider">
+                <span id="weight-value">0.5</span>
+            </div>
+
+            <!-- PCA Components -->
+            <div class="form-group">
+                <label for="pca-components">Number of PCA Components:</label>
+                <input type="number" id="pca-components" name="pca-components" min="1" max="10" value="5">
+            </div>
+
+            <button type="submit">Search</button>
+        </form>
+
+        <!-- Results Section -->
+        <div class="results-grid" id="results">
+            <!-- Results will be dynamically inserted here -->
+        </div>
+        <!-- Add this to your existing index.html, just before the closing </div> of the container -->
+{% if results %}
+<div class="results-section">
+    <h2>Search Results</h2>
+    {% if text_query %}
+        <p>Text Query: "{{ text_query }}"</p>
+    {% endif %}
+    {% if has_image_query %}
+        <p>Image Query: Included</p>
+    {% endif %}
+    {% if text_query and has_image_query %}
+        <p>Text Weight: {{ weight }}</p>
+    {% endif %}
+    <p>PCA Components: {{ pca_components }}</p>
+    
+    <div class="results-grid">
+        {% for result in results %}
+            <div class="result-card">
+                <img src="{{ result.image }}" alt="Search result" onerror="this.onerror=null; this.src='/static/placeholder.png';">
+                <div class="similarity-score">
+                    Similarity: {{ "%.3f"|format(result.score) }}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+    </div>
+
+    <script>
+        // Show/hide weight slider based on inputs
+        function updateWeightVisibility() {
+            const textQuery = document.getElementById('text-query').value;
+            const imageQuery = document.getElementById('image-query').files[0];
+            const weightContainer = document.getElementById('weight-container');
+            
+            weightContainer.style.display = (textQuery && imageQuery) ? 'block' : 'none';
+        }
+
+        // Preview uploaded image
+        function previewImage(input) {
+            const preview = document.getElementById('image-preview');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+            updateWeightVisibility();
+        }
+
+        // Update weight value display
+        document.getElementById('weight').oninput = function() {
+            document.getElementById('weight-value').textContent = this.value;
+        }
+
+        document.getElementById('text-query').oninput = updateWeightVisibility;
+
+        // Example function to display results (to be implemented with backend)
+        function displayResults(results) {
+            const resultsContainer = document.getElementById('results');
+            resultsContainer.innerHTML = results.map(result => `
+                <div class="result-card">
+                    <img src="${result.image}" alt="Search result">
+                    <div class="similarity-score">Similarity: ${result.score.toFixed(3)}</div>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
