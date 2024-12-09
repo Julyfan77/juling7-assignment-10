@@ -1,5 +1,5 @@
 # Python version
-PYTHON := python3
+PYTHON := python3.10
 
 # Virtual environment directories
 VENV := venv
@@ -18,7 +18,7 @@ help:
 # Create virtual environment
 $(VENV)/bin/activate: requirements.txt
 	$(PYTHON) -m venv $(VENV)
-	$(VENV_BIN)/pip install --upgrade pip
+	$(VENV_BIN)/pip install --upgrade pip setuptools wheel
 	$(VENV_BIN)/pip install -r requirements.txt --no-cache-dir
 
 # Install dependencies
@@ -27,7 +27,7 @@ install: $(VENV)/bin/activate
 
 # Run the application
 .PHONY: run
-run: install
+run:
 	$(VENV_BIN)/python app.py
 
 # Clean up
