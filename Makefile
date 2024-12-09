@@ -19,7 +19,7 @@ help:
 $(VENV)/bin/activate: requirements.txt
 	$(PYTHON) -m venv $(VENV)
 	$(VENV_BIN)/pip install --upgrade pip
-	$(VENV_BIN)/pip install -r requirements.txt
+	$(VENV_BIN)/pip install -r requirements.txt --no-cache-dir
 
 # Install dependencies
 .PHONY: install
