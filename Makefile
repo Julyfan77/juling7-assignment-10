@@ -15,20 +15,17 @@ help:
 	@echo "make run       - Run the Flask application"
 	@echo "make clean     - Remove virtual environment and cached files"
 
-# Create virtual environment
-$(VENV)/bin/activate: requirements.txt
+# Create virtual environment and install dependencies
+.PHONY: install
+install:
 	$(PYTHON) -m venv $(VENV)
 	$(VENV_BIN)/pip install --upgrade pip setuptools wheel
 	$(VENV_BIN)/pip install -r requirements.txt --no-cache-dir
 
-# Install dependencies
-.PHONY: install
-install: $(VENV)/bin/activate
-
 # Run the application
 .PHONY: run
 run:
-	$(VENV_BIN)/python app.py
+	python app.py
 
 # Clean up
 .PHONY: clean
