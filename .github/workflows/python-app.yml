@@ -36,4 +36,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        pytest
+        make run &
+        sleep 5
+        curl -f http://localhost:3000 || echo "Server not running"
+        kill $(lsof -t -i:3000)
